@@ -1,7 +1,7 @@
 import re
 import sys
-import logging
 from os import environ
+from logging import getLogger, StreamHandler, Formatter
 from pathlib import Path
 from asyncio import get_event_loop, iscoroutine
 from importlib import import_module, util as import_util
@@ -16,18 +16,20 @@ DEFAULT_ADAPTERS = ["shell"]
 
 
 def get_logger(level="INFO"):
-    # TODO:
+    fmt = Formatter("[%(asctime)s] [%(module)s.%(funcName)s] [%(levelname)s]::"
+                    " %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S %z")
+    ch = StreamHandler()
+    ch.setLevel("DEBUG")
+    ch.setFormatter(fmt)
 
-    log = logging.getLogger("aiohubot")
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    log = getLogger("aiohubot")
     log.addHandler(ch)
     try:
-        # log.setLevel(level.upper())
-        log.setLevel(logging.DEBUG)
+        log.setLevel(level.upper())
     except ValueError:
         log.setLevel("INFO")
-        log.error(f"Failed to set log level.", exc_info=True)
+        log.error(f"Fail to set log level with errors", exc_info=True)
 
     return log
 
@@ -357,14 +359,6 @@ class Robot:
     def parse_help(self, document):
         pass
 
-    def send(self, envelope, *strings):
-        # delegates to adapter's send
-        return self.adapter.send(envelope, *strings)
-
-    def reply(self, envelope, *strings):
-        # delegates to adapter's reply
-        return self.adapter.reply(envelope, *strings)
-
     def message_room(self, room, *strings):
         """ A helper send function to message a room that the robot is in.
 
@@ -375,10 +369,7 @@ class Robot:
         self.adapter.send(envelope, *strings)
 
     async def run(self):
-        """ Kick off the event loop for the adapter.
-
-        :async:
-        """
+        """ Kick off the event loop for the adapter. """
         self.emit("running")
         coro = self.adapter.run()
         if iscoroutine(coro):
