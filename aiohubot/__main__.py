@@ -5,7 +5,7 @@ from os import environ
 from pathlib import Path
 from argparse import ArgumentParser, Action
 
-from .robot import __version__, Robot
+from . import __version__, Robot
 
 
 class EnvDefault(Action):
