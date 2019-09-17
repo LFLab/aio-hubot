@@ -11,7 +11,6 @@ from pyee import AsyncIOEventEmitter
 from .core import Response, Middleware, Brain, Listener, TextListener
 from .plugins import EnterMessage, LeaveMessage, TopicMessage, CatchAllMessage
 
-__version__ = "0.3.0"
 DEFAULT_ADAPTERS = ["shell"]
 
 

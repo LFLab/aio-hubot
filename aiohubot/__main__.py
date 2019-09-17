@@ -1,7 +1,7 @@
 import sys
 import json
 import asyncio
-from os import environ, getcwd
+from os import environ
 from pathlib import Path
 from argparse import ArgumentParser, Action
 
@@ -41,10 +41,6 @@ def load_external_scripts(robot):
 
 
 def main(args):
-    print(args.__dict__)
-    print(__file__)
-    print(getcwd())
-
     robot = Robot(args.adapter, not args.disable_httpd, args.name, args.alias)
     scripts = args.scripts or list()
 
