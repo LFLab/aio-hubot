@@ -59,13 +59,8 @@ def main(args):
     except Exception:
         robot.logger.error("Error to setup uvloop with asyncio", exc_info=True)
 
-    if hasattr(asyncio, 'run'):
-        executor = asyncio.run
-    else:
-        executor = asyncio.get_event_loop().run_until_complete
-
     robot.adapter.once("connected", lambda: load_scripts(robot, scripts))
-    executor(robot.run())
+    robot.run()
 
 
 if __name__ == '__main__':
