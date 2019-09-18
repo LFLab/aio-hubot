@@ -9,8 +9,8 @@ from .core import Response, DataStoreUnavailable
 class Adapter(AsyncIOEventEmitter):
     """ An adapter is a specific interface to a chat source for robots. """
 
-    def __init__(self, robot, loop=None):
-        super().__init__(loop or get_event_loop())
+    def __init__(self, robot):
+        super().__init__(robot._loop)
         self.robot = robot
         self.receive = self.robot.receive  # dispatch
 
@@ -88,7 +88,8 @@ class TextMessage(Message):
         self.id = id
 
     def __repr__(self):
-        return f"{self.__class__}({self.user}, {self.text}, {self.id})"
+        name = self.__class__.__name__
+        return f"{name}({self.user}, {self.text!r}, {self.id!r})"
 
     def __str__(self):
         return str(self.text)
