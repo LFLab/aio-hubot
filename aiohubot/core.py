@@ -250,7 +250,10 @@ class Response:
         ctx = await self.robot.response_middleware.execute(ctx)
         # XXX: `locked` is not the basic adapter method, only for campfire.
         handle = getattr(self.robot.adapter, method_name)
-        return handle(self.envelope, *ctx.get('strings', list()))
+        coro = handle(self.envelope, *ctx.get('strings', list()))
+        if iscoroutine(coro):
+            return await coro
+        return coro
 
     def random(self, items):
         """ Picks a random item from the given items.
