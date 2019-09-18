@@ -43,19 +43,21 @@ class Robot:
     :param alias: A string of the alias of the robot name.
     '''
 
-    def __init__(self, adapter, httpd=False, name="Hubot", alias=""):
+    def __init__(self, adapter, httpd=False, name="Hubot", alias="", loop=None):
         self.datastore = self.adapter = None
         self.commands, self.listeners, self.error_handlers = [], [], []
-
-        self.name = name
-        self.alias = alias
         self.listener_middleware = Middleware(self)
         self.response_middleware = Middleware(self)
         self.receive_middleware = Middleware(self)
         self.logger = get_logger(environ.get("HUBOT_LOG_LEVEL", "info"))
 
+        self.name = name
+        self.alias = alias
+        self._loop = loop or get_event_loop()
+
         # used in httprouter
-        self.ping_interval_id, self.router = None, dict()
+        self.server = self.ping_interval_id = None
+        self.router = dict()
         if httpd:
             self.setup_httprouter()  # was setupExpress()
         else:
@@ -74,6 +76,13 @@ class Robot:
         self.emit = self.events.emit
         self.brain = Brain(self)
         self.on("error", self.invoke_error_handlers)
+
+    def __repr__(self):
+        name = self.__class__.__name__
+        return (f"<{self.__module__}.{name}"
+                f" adapter={self.adapter_name!r}"
+                f" name={self.name!r} alias={self.alias!r}"
+                f" at 0x{id(self):08X}>")
 
     def listen(self, matcher, handler, **options):
         """ Adds a custom Listener with the provided matcher, handler and other
@@ -286,6 +295,8 @@ class Robot:
             for f in p.iterdir():
                 if f.is_file() and f.name.endswith(".py"):
                     self.load_file(f)
+        elif p.is_file() and p.name.endswith(".py"):
+            self.load_file(p)
 
     def load_external_scripts(self, packages):
         """ Load scripts from packages specified in the `external-scripts.json`
@@ -367,12 +378,16 @@ class Robot:
         envelope = dict(room=room)
         self.adapter.send(envelope, *strings)
 
-    async def run(self):
+    def run(self):
         """ Kick off the event loop for the adapter. """
         self.emit("running")
         coro = self.adapter.run()
         if iscoroutine(coro):
-            await coro
+            self._loop.create_task(coro)
+        try:
+            self._loop.run_forever()
+        except KeyboardInterrupt:
+            self.shutdown()
 
     def shutdown(self):
         """ Gracefully shutdown the robot process. """
