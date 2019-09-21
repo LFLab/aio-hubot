@@ -398,3 +398,98 @@ class Robot:
         if self.server:
             self.server.close()
         self.brain.close()
+
+
+class Blueprint:
+    def __init__(self):
+        holds = dict()
+
+    def __call__(self, robot):
+        for delegatee, handlers in self.holds.items():
+            for (args, kws) in handlers:
+                getattr(robot, delegatee)(**kws)
+
+    def listen(self, matcher, **options):
+        def decorator(handler):
+            kws.update(handler=handler)
+            self.holds.setdefault("listen", list()).append(kws)
+            return handler
+
+        kws = options.copy()
+        kws.update(matcher=matcher)
+        return decorator
+
+    def hear(self, regex, **options):
+        def decorator(handler):
+            kws.update(handler=handler)
+            self.holds.setdefault("hear", list()).append(kws)
+            return handler
+
+        kws = options.copy()
+        kws.update(regex=regex)
+        return decorator
+
+    def response(self, regex, flags=0, **options):
+        def decorator(handler):
+            kws.update(handler=handler)
+            self.holds.setdefault("response", list()).append(kws)
+            return handler
+
+        kws = options.copy()
+        kws.update(regex=regex, flags=flags)
+        return decorator
+
+    def enter(self, **options):
+        def decorator(handler):
+            kws.update(handler=handler)
+            self.holds.setdefault("enter", list()).append(kws)
+            return handler
+
+        kws = options.copy()
+        return decorator
+
+    def leave(self, **options):
+        def decorator(handler):
+            kws.update(handler=handler)
+            self.holds.setdefault("leave", list()).append(kws)
+            return handler
+
+        kws = options.copy()
+        return decorator
+
+    def topic(self, **options):
+        def decorator(handler):
+            kws.update(handler=handler)
+            self.holds.setdefault("topic", list()).append(kws)
+            return handler
+
+        kws = options.copy()
+        return decorator
+
+    def catch_all(self, **options):
+        def decorator(handler):
+            kws.update(handler=handler)
+            self.holds.setdefault("catch_all", list()).append(kws)
+            return handler
+
+        kws = options.copy()
+        return decorator
+
+    def error(self, handler):
+        self.holds.setdefault("error", list()).append(dict(handler=handler))
+        return handler
+
+    def middleware_listener(self, middleware):
+        kws = dict(middleware=middleware)
+        self.holds.setdefault("middleware_listener", list()).append(kws)
+        return middleware
+
+    def middleware_response(self, middleware):
+        kws = dict(middleware=middleware)
+        self.holds.setdefault("middleware_response", list()).append(kws)
+        return middleware
+
+    def middleware_receive(self, middleware):
+        kws = dict(middleware=middleware)
+        self.holds.setdefault("middleware_receive", list()).append(kws)
+        return middleware
