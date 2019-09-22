@@ -2,7 +2,7 @@ import sys
 import time
 from os import environ
 from cmd import Cmd
-from asyncio import ensure_future
+from asyncio import ensure_future, sleep
 from threading import Thread
 
 from aiohubot.plugins import Adapter, TextMessage
@@ -49,12 +49,24 @@ class Cli(Cmd):
                                             **dict(name=username, room="Shell"))
         coro = self.shell.receive(TextMessage(user, msg, "message_id"))
         f = ensure_future(coro, loop=self._loop)
-        self._loop.run_until_complete(f)
         self.lastcmd = ""
 
     def do_quit(self, msg):
-        print("exiting...")
+        print("\n*** Exiting ... ***\n")
         return True
+
+    def do_EOF(self, msg):
+        print()
+        return self.do_quit(msg)
+
+    def postloop(self):
+        def cb(f):
+            return self.shell.shutdown()
+
+        # make a tick to let loop cycling
+        f = ensure_future(sleep(0), loop=self._loop)
+        f.add_done_callback(cb)
+        return f
 
     do_exit = do_quit
 
