@@ -7,6 +7,7 @@ from asyncio import get_event_loop, iscoroutine
 from importlib import import_module, util as import_util
 
 from pyee import AsyncIOEventEmitter
+from aiohttp import web
 
 from .core import Response, Middleware, Brain, Listener, TextListener
 from .plugins import EnterMessage, LeaveMessage, TopicMessage, CatchAllMessage
@@ -56,8 +57,7 @@ class Robot:
         self._loop = loop or get_event_loop()
 
         # used in httprouter
-        self.server = self.ping_interval_id = None
-        self.router = dict()
+        self.server = self.router = self.ping_interval_id = None
         if httpd:
             self.setup_httprouter()  # was setupExpress()
         else:
@@ -317,7 +317,41 @@ class Robot:
             sys.exit(1)
 
     def setup_httprouter(self):
-        raise NotImplementedError("Not support yet.")
+        @web.middleware
+        async def set_header(request, handler):
+            response = await handler(request)
+            response.headers["X-Powered-By"] = f"hubot/{self.name}"
+            return response
+
+        user, pwd = environ.get("EXPRESS_USER"), environ.get("EXPRESS_PASSWORD")
+        stat = environ.get("EXPRESS_STATIC")
+        addr = environ.get("EXPRESS_BIND_ADDRESS", "0.0.0.0")
+        port = int(environ.get("EXPRESS_PORT", 8080))
+
+        mws = [set_header]
+
+        if user and pwd:
+            try:
+                from aiohttp_basicauth import BasicAuthMiddleware
+            except ImportError:
+                self.logger.warn(f"`aiohttp_basicauth` is required",
+                                 exc_info=True)
+            else:
+                mws.append(BasicAuthMiddleware(username=user, password=pwd))
+
+        app = web.Application(middlewares=mws, loop=self._loop)
+        async def _start():
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, addr, port)
+            await site.start()
+
+        app.start = _start
+        self.router = app.router
+        self.server = app
+
+        if stat and Path(stat).is_dir():
+            self.router.add_static(stat, stat)
 
     def setup_nullrouter(self):
         """ Setup an empty router object. """
@@ -325,7 +359,13 @@ class Robot:
             return self.logger.warning(msg)
         msg = ("A script has tried registering a HTTP route"
                " while the HTTP server is disabled with --disabled-httpd.")
-        self.router = dict(get=_warn, post=_warn, put=_warn, delete=_warn)
+
+        class NoneDispatcher(web.UrlDispatcher):
+            def __getattribute__(self, attr):
+                _warn()
+                return super().__getattribute__(attr)
+
+        self.router = NoneDispatcher()
 
     def load_adapter(self, adapter):
         """ Load the adapter Hubot is going to use.
@@ -380,34 +420,48 @@ class Robot:
 
     def run(self):
         """ Kick off the event loop for the adapter. """
-        self.emit("running")
+
+        if self.server is not None:
+            self.logger.debug("HTTP server Starting ...")
+            self._loop.run_until_complete(self.server.start())
+            self.logger.debug("HTTP Server Started .")
+
         coro = self.adapter.run()
         if iscoroutine(coro):
             self._loop.create_task(coro)
         try:
+            self.emit("running")
             self._loop.run_forever()
         except KeyboardInterrupt:
+            self.logger.info("robot stoping by ctrl+C")
+        finally:
             self.shutdown()
 
     def shutdown(self):
         """ Gracefully shutdown the robot process. """
-
+        self._loop.stop()
+        if self.server:
+            self._loop.run_until_complete(self.server.shutdown())
         if self.ping_interval_id:
             self.ping_interval_id.cancel()
         self.adapter.close()
-        if self.server:
-            self.server.close()
         self.brain.close()
 
 
 class Blueprint:
     def __init__(self):
         holds = dict()
+        self.router = web.RouteTableDef()
 
     def __call__(self, robot):
         for delegatee, handlers in self.holds.items():
             for (args, kws) in handlers:
                 getattr(robot, delegatee)(**kws)
+        if robot.server is not None:
+            robot.server.add_routes(self.router)
+        elif self.router:
+            robot.logger.info("HTTP server is disabled."
+                              f"{len(self.router)} routes will be dropped.")
 
     def listen(self, matcher, **options):
         def decorator(handler):
