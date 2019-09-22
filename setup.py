@@ -17,7 +17,8 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/LFLab/aiohubot",
     packages=find_packages(),
-    install_requires=["pyee>=6.*"],
+    install_requires=["pyee>=6.*, <7", "aiohttp>=3.*, <4"],
+    extras_require=dict(HTTP_AUTH=["aiohttp_basicauth"]),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
