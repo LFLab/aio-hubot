@@ -2,6 +2,7 @@ import sys
 import json
 import asyncio
 from os import environ
+from ast import literal_eval
 from pathlib import Path
 from argparse import ArgumentParser, Action
 
@@ -10,12 +11,13 @@ from . import __version__, Robot
 
 class EnvDefault(Action):
     def __init__(self, envvar, required=True, default=None, **kwargs):
-        default = environ.get("envvar", default)
-        if required and default:
+        default = environ.get(envvar, default)
+        if required and default is not None:
             required = False
         super().__init__(default=default, required=required, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
+        print(namespace, self.dest, values)
         setattr(namespace, self.dest, values)
 
 
@@ -41,7 +43,15 @@ def load_external_scripts(robot):
 
 
 def main(args):
-    robot = Robot(args.adapter, not args.disable_httpd, args.name, args.alias)
+    if not args.disable_httpd:
+        httpd = True
+    else:
+        try:
+            httpd = literal_eval(environ.get("HUBOT_HTTPD", "False"))
+        except ValueError:
+            httpd = False
+
+    robot = Robot(args.adapter, httpd, args.name, args.alias)
     scripts = args.scripts or list()
 
     if args.config_check:
@@ -60,7 +70,24 @@ def main(args):
         robot.logger.error("Error to setup uvloop with asyncio", exc_info=True)
 
     robot.adapter.once("connected", lambda: load_scripts(robot, scripts))
-    robot.run()
+    try:
+        robot.run()
+    finally:
+        loop = robot._loop
+        to_cancel = {t for t in asyncio.Task.all_tasks(loop) if not t.done()}
+        for task in to_cancel:
+            task.cancel()
+        coro = asyncio.gather(*to_cancel, loop=loop, return_exceptions=True)
+        loop.run_until_complete(coro)
+        for task in to_cancel:
+            if task.exception() is not None:
+                loop.call_exception_handler(dict(
+                    message="unhandled exception during exiting.",
+                    exception=task.exception(),
+                    task=task
+                ))
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.close()
 
 
 if __name__ == '__main__':
@@ -68,9 +95,8 @@ if __name__ == '__main__':
     arg.add_argument("-a", "--adapter", type=str, default="shell",
                      action=EnvDefault, envvar="HUBOT_ADAPTER",
                      help=r"The Adapter to be use")
-    arg.add_argument("-d", "--disable-httpd", type=bool, default=True,
-                     action=EnvDefault, envvar="HUBOT_HTTPD",
-                     help=r"Disable HTTP server")
+    arg.add_argument("-d", "--disable-httpd", default=False,
+                     action="store_true", help=r"Disable HTTP server")
     arg.add_argument("-l", "--alias", type=str, default="/",
                      action=EnvDefault, envvar="HUBOT_ALIAS",
                      help=r"Enable replacing the robot's name with alias")
