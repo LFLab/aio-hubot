@@ -399,3 +399,19 @@ class TextListener(Listener):
     def _matcher(self, message):
         if isinstance(message, TextMessage):
             return message.match(self.regex)
+
+
+class Message:
+    ''' Represents an incoming message from the chat.
+
+    :param user: A User instance that sent the message.
+    '''
+
+    def __init__(self, user, done=False):
+        self.user = user
+        self.done = done
+        self.room = user.room
+
+    def finish(self):
+        """ Indicates that no other Listener should be called on this object. """
+        self.done = True

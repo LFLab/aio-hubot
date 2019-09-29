@@ -3,7 +3,7 @@ from asyncio import get_event_loop, Future, iscoroutine, Event
 
 from pyee import AsyncIOEventEmitter
 
-from .core import Response, DataStoreUnavailable
+from .core import Message, Response, DataStoreUnavailable
 
 
 class Adapter(AsyncIOEventEmitter):
@@ -56,22 +56,6 @@ class Adapter(AsyncIOEventEmitter):
 
     def close(self):
         """ Raw method for shutting the bot down. """
-
-
-class Message:
-    ''' Represents an incoming message from the chat.
-
-    :param user: A User instance that sent the message.
-    '''
-
-    def __init__(self, user, done=False):
-        self.user = user
-        self.done = done
-        self.room = user.room
-
-    def finish(self):
-        """ Indicates that no other Listener should be called on this object. """
-        self.done = True
 
 
 class TextMessage(Message):
