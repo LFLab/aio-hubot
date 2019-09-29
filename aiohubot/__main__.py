@@ -17,7 +17,6 @@ class EnvDefault(Action):
         super().__init__(default=default, required=required, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
-        print(namespace, self.dest, values)
         setattr(namespace, self.dest, values)
 
 
@@ -72,6 +71,8 @@ def main(args):
     robot.adapter.once("connected", lambda: load_scripts(robot, scripts))
     try:
         robot.run()
+    except KeyboardInterrupt:
+        pass
     finally:
         loop = robot._loop
         to_cancel = {t for t in asyncio.Task.all_tasks(loop) if not t.done()}
