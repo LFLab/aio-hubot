@@ -450,12 +450,12 @@ class Robot:
 
 class Blueprint:
     def __init__(self):
-        holds = dict()
+        self.holds = dict()
         self.router = web.RouteTableDef()
 
     def __call__(self, robot):
         for delegatee, handlers in self.holds.items():
-            for (args, kws) in handlers:
+            for kws in handlers:
                 getattr(robot, delegatee)(**kws)
         if robot.server is not None:
             robot.server.add_routes(self.router)
