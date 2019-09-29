@@ -380,27 +380,6 @@ class Listener:
         return False
 
 
-class TextListener(Listener):
-    ''' TextListeners receive every message from the chat source and decide if
-    they want to act on it.
-
-    :param robot: A Robot instance
-    :param regex: A regular expression that determines if this listener should
-        trigger the handler.
-    :param handler: A callable (async) function that is triggered if the incoming
-        message matches.
-    :param options: Additional parameters keyed on extension name. (optional)
-    '''
-
-    def __init__(self, robot, regex, handler, **options):
-        super().__init__(robot, self._matcher, handler, **options)
-        self.regex = re.compile(regex)
-
-    def _matcher(self, message):
-        if isinstance(message, TextMessage):
-            return message.match(self.regex)
-
-
 class Message:
     ''' Represents an incoming message from the chat.
 
