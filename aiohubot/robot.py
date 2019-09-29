@@ -104,7 +104,7 @@ class Robot:
         :param handler: A (async) function is called with a Response object.
         :param options: additional parameters keyed on extension name.
         """
-        listener = TextListener(self, re.comiple(regex), handler, **options)
+        listener = TextListener(self, re.compile(regex), handler, **options)
         self.listeners.append(listener)
 
     def response(self, regex, handler, *, flags=0, **options):
