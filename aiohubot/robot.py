@@ -9,8 +9,9 @@ from importlib import import_module, util as import_util
 from pyee import AsyncIOEventEmitter
 from aiohttp import web
 
-from .core import Response, Middleware, Brain, Listener, TextListener
-from .plugins import EnterMessage, LeaveMessage, TopicMessage, CatchAllMessage
+from .core import Response, Middleware, Brain, Listener
+from .plugins import (EnterMessage, LeaveMessage, TopicMessage, CatchAllMessage,
+                      TextListener)
 
 DEFAULT_ADAPTERS = ["shell"]
 
