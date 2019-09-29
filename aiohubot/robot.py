@@ -127,6 +127,7 @@ class Robot:
             robot's name/alias.
         :param flags: The constants passed to `re.compile`.
         """
+        pattern = re.compile(pattern).pattern
         escape = re.compile(r"[-[\]{}()*+?.,\\^$|#\s]")
         name = escape.sub("\\$&", self.name)
         if pattern.startswith("^"):
@@ -135,15 +136,15 @@ class Robot:
             self.logger.warning(f"the regex is {pattern}")
 
         if not self.alias:
-            return re.compile(fr"^\\s*[@]?{name}[:,]?\\s*(?:{pattern})", flags)
+            return re.compile(fr"^\s*[@]?{name}[:,]?\s*(?:{pattern})", flags)
 
-        alias = escape("\\$&", self.alias)
+        alias = escape.sub("\\$&", self.alias)
         # XXX: it seems not need to return in different order in python
         if len(name) > len(alias):
             x, y = name, alias
-            _pattern = fr"^\\s*[@]?(?:{x}[:,]?|{y}[:,]?)\\s*(?:{pattern})"
+            _pattern = fr"^\s*[@]?(?:{x}[:,]?|{y}[:,]?)\s*(?:{pattern})"
         else:
-            _pattern = fr"^\\s*[@]?(?:{y}[:,]?|{x}[:,]?)\\s*(?:{pattern})"
+            _pattern = fr"^\s*[@]?(?:{y}[:,]?|{x}[:,]?)\s*(?:{pattern})"
         return re.compile(_pattern, flags)
 
     def enter(self, handler, **options):
