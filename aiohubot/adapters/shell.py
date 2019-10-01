@@ -2,8 +2,8 @@ import sys
 import time
 from os import environ
 from cmd import Cmd
-from asyncio import ensure_future, sleep
-from threading import Thread
+from asyncio import run_coroutine_threadsafe
+from threading import Thread, Event
 
 from aiohubot.plugins import Adapter, TextMessage
 
@@ -42,13 +42,18 @@ class Shell(Adapter):
 
 
 class Cli(Cmd):
+    evt = Event()
+
     def do_msg(self, msg):
         user_id = environ.get("HUBOT_SHELL_USER_ID", "1")
         username = environ.get("HUBOT_SHELL_USER_NAME", "Shell")
         user = self.robot.brain.user_for_id(user_id,
                                             **dict(name=username, room="Shell"))
         coro = self.shell.receive(TextMessage(user, msg, "message_id"))
-        f = ensure_future(coro, loop=self._loop)
+        f = run_coroutine_threadsafe(coro, loop=self._loop)
+        f.add_done_callback(lambda f: self.evt.set())
+        self.evt.wait()
+        self.evt.clear()
         self.lastcmd = ""
 
     def do_quit(self, msg):
@@ -60,14 +65,9 @@ class Cli(Cmd):
         return self.do_quit(msg)
 
     def postloop(self):
-        def cb(f):
-            return self.shell.shutdown()
-
-        # make a tick to let loop cycling
-        f = ensure_future(sleep(0), loop=self._loop)
-        f.add_done_callback(cb)
-        return f
+        self._loop.call_later(0, self.shell.shutdown)
 
     do_exit = do_quit
+
 
 use = Shell
