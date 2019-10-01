@@ -188,7 +188,6 @@ class Robot:
         :param err: An Exception object.
         :param res: An optional Response object that generated the error.
         """
-        self.logger.exception(err)
         for hdlr in self.error_handlers:
             try:
                 coro = hdlr(err, res)
@@ -256,6 +255,7 @@ class Robot:
                 if message.done:
                     break
             except Exception as e:
+                self.logger.exception(f"emit {e!r} to `error` event.")
                 self.emit("error", e, Response(self, context['response'].message))
         else:
             msg = context['response'].message
@@ -398,8 +398,7 @@ class Robot:
                 name = mod_name.rsplit(".", 1)[-1]
             self.adapter = init_adap(self)
         except Exception as e:
-            self.logger.error(f"Cannot load adapter {adapter} - {e}")
-            self.logger.exception(e)
+            self.logger.exception(f"Cannot load adapter {adapter} - {e!r}")
             sys.exit(1)
 
         return name

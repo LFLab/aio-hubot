@@ -134,7 +134,7 @@ class Brain(AsyncIOEventEmitter):
         if isinstance(data, dict):
             self.data.update(data)
             users = self.data['users']
-            self.data['users'] = {k:renew_ifneed(u) for k, u in users.items()}
+            self.data['users'] = {k: renew_ifneed(u) for k, u in users.items()}
 
         self.emit("loaded", self.data)
 
@@ -260,7 +260,7 @@ class Response:
 
         :param items: An Sequence of items.
         """
-        return items[randint(0, len(items) -1)]
+        return items[randint(0, len(items) - 1)]
 
     def finish(self):
         """ Tell the message to stop dispatching to listeners. """
@@ -307,7 +307,8 @@ class Middleware:
             except Finished:
                 break
             except Exception as e:
-                self.robot.emit("robot", e, context.response)
+                self.robot.logger.exception(f"emit {e!r} to `error` event.")
+                self.robot.emit("error", e, context.response)
                 break
         return context
 
@@ -374,6 +375,7 @@ class Listener:
                 if iscoroutine(coro):
                     await coro
             except Exception as e:
+                self.robot.logger.exception(f"emit {e!r} to `error` event.")
                 self.robot.emit("error", e, context['response'])
             return True
 
