@@ -249,8 +249,9 @@ class Robot:
         executed = False
         for listener in self.listeners:
             try:
-                executed = await listener.call(context['response'].message,
-                                               self.listener_middleware)
+                called = await listener.call(context['response'].message,
+                                             self.listener_middleware)
+                executed = executed or called
                 if message.done:
                     break
             except Exception as e:

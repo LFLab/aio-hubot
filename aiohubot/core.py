@@ -288,7 +288,6 @@ class Middleware:
     async def execute(self, context):
         ''' Execute all middleware in order, if the `finish` is not called.
 
-        :async:
         :param context: A dict represents as context that is passed through the
             middleware stack.  When handling errors, this is assumed to have a
             `response` key inside.
@@ -345,7 +344,6 @@ class Listener:
         middleware can intercept the message and prevent the handler from ever
         being executed.
 
-        :async:
         :param message: A Message instance
         :param middleware: Optional Middleware object to execute before the
             listener handled.
