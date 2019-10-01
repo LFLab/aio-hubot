@@ -164,8 +164,6 @@ class DataStore:
         """ Assuming `key` represents an dict in the databse, sets its
         `object_key` to `value`.  If `key` isn't already present, it's
         instantiated as an empty dict.
-
-        :async:
         """
 
         target = await self.get(key) or dict()
@@ -176,8 +174,6 @@ class DataStore:
         """ Adds the supplied value(s) to the end of the existing array in the
         database marked by `key`.  If `key` isn't already present, it's
         instantiated as an empty list.
-
-        :async:
         """
         target = await self.get(key) or []
         items = target + (value if isinstance(value, list) else [value])
@@ -194,8 +190,6 @@ class DataStore:
         """ Digs inside the object at `key` for a key named `object_key`.
         If `key` isn't already present, or if it doesn't contain an
         `object_key`, returns `None`.
-
-        :async:
         """
 
         target = await self.get(key) or dict()

@@ -184,7 +184,6 @@ class Robot:
         """ Calls and passes any registered error handlers for unhandled
         exceptions or user emitted error events.
 
-        :async:
         :param err: An Exception object.
         :param res: An optional Response object that generated the error.
         """
@@ -341,13 +340,13 @@ class Robot:
             else:
                 mws.append(BasicAuthMiddleware(username=user, password=pwd))
 
-        app = web.Application(middlewares=mws, loop=self._loop)
         async def _start():
             runner = web.AppRunner(app)
             await runner.setup()
             site = web.TCPSite(runner, addr, port)
             await site.start()
 
+        app = web.Application(middlewares=mws, loop=self._loop)
         app.start = _start
         self.router = app.router
         self.server = app
