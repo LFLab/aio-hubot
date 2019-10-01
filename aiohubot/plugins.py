@@ -3,7 +3,7 @@ from asyncio import get_event_loop, Future, iscoroutine, Event
 
 from pyee import AsyncIOEventEmitter
 
-from .core import Message, Response, DataStoreUnavailable
+from .core import Listener, Message, Response, DataStoreUnavailable
 
 
 class Adapter(AsyncIOEventEmitter):
