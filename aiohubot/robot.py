@@ -128,7 +128,8 @@ class Robot:
             robot's name/alias.
         :param flags: The constants passed to `re.compile`.
         """
-        pattern = re.compile(pattern).pattern
+        regex = re.compile(pattern)
+        pattern, oflags = regex.pattern, regex.flags
         escape = re.compile(r"[-[\]{}()*+?.,\\^$|#\s]")
         name = escape.sub("\\$&", self.name)
         if pattern.startswith("^"):
@@ -146,7 +147,7 @@ class Robot:
             _pattern = fr"^\s*[@]?(?:{x}[:,]?|{y}[:,]?)\s*(?:{pattern})"
         else:
             _pattern = fr"^\s*[@]?(?:{y}[:,]?|{x}[:,]?)\s*(?:{pattern})"
-        return re.compile(_pattern, flags)
+        return re.compile(_pattern, oflags | flags)
 
     def enter(self, handler, **options):
         """ Adds a Listener that triggers when anyone enters the room.
