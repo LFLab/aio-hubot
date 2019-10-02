@@ -97,7 +97,7 @@ class Robot:
         """
         self.listeners.append(Listener(self, matcher, handler, **options))
 
-    def hear(self, regex, handler, **options):
+    def hear(self, regex, handler, *, flags=0, **options):
         """ Adds a Listener that attempts to match incoming messages based on a
         regular expression.
 
@@ -105,7 +105,10 @@ class Robot:
         :param handler: A (async) function is called with a Response object.
         :param options: additional parameters keyed on extension name.
         """
-        listener = TextListener(self, re.compile(regex), handler, **options)
+        regex = re.compile(regex)
+        pattern, oflags = regex.pattern, regex.flags
+        regexp = re.compile(pattern, oflags | flags)
+        listener = TextListener(self, regexp, handler, **options)
         self.listeners.append(listener)
 
     def respond(self, regex, handler, *, flags=0, **options):
