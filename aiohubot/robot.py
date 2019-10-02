@@ -108,7 +108,7 @@ class Robot:
         listener = TextListener(self, re.compile(regex), handler, **options)
         self.listeners.append(listener)
 
-    def response(self, regex, handler, *, flags=0, **options):
+    def respond(self, regex, handler, *, flags=0, **options):
         """ Adds a Listener that attempts to match incoming messages directed
         at the robot based on a Regex.  All regexes treat patterns like they
         begin with a '^'
@@ -118,9 +118,9 @@ class Robot:
         :param flags: The constants passed to `re.compile`.
         :param options: additional parameters keyed on extension name.
         """
-        self.hear(self.response_pattern(regex, flags), handler, **options)
+        self.hear(self.respond_pattern(regex, flags), handler, **options)
 
-    def response_pattern(self, pattern, flags=0):
+    def respond_pattern(self, pattern, flags=0):
         """ Build a regular expression that matches messages addressed directly
         to the robot.
 
@@ -133,7 +133,7 @@ class Robot:
         escape = re.compile(r"[-[\]{}()*+?.,\\^$|#\s]")
         name = escape.sub("\\$&", self.name)
         if pattern.startswith("^"):
-            self.logger.warning("Anchors don't work well with response, "
+            self.logger.warning("Anchors don't work well with respond, "
                                 "perhaps you want to use `hear`?")
             self.logger.warning(f"the regex is {pattern}")
 
@@ -485,10 +485,10 @@ class Blueprint:
         kws.update(regex=regex)
         return decorator
 
-    def response(self, regex, flags=0, **options):
+    def respond(self, regex, *, flags=0, **options):
         def decorator(handler):
             kws.update(handler=handler)
-            self.holds.setdefault("response", list()).append(kws)
+            self.holds.setdefault("respond", list()).append(kws)
             return handler
 
         kws = options.copy()
