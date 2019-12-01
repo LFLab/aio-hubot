@@ -415,9 +415,13 @@ class Robot:
         """ Kick off the event loop for the adapter. """
 
         if self.server is not None:
-            self.logger.debug("HTTP server Starting ...")
-            self._loop.run_until_complete(self.server.start())
-            self.logger.debug("HTTP Server Started .")
+            logger, server = self.logger, self.server
+
+            @self.events.once("scripts-loaded")
+            async def _start():
+                logger.debug("HTTP server Starting ...")
+                server.start()
+                logger.debug("HTTP Server Started .")
 
         coro = self.adapter.run()
         if iscoroutine(coro):
