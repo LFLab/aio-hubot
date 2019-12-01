@@ -341,16 +341,8 @@ class Robot:
             else:
                 mws.append(BasicAuthMiddleware(username=user, password=pwd))
 
-        async def _start():
-            runner = web.AppRunner(app)
-            await runner.setup()
-            site = web.TCPSite(runner, addr, port)
-            await site.start()
-
-        app = web.Application(middlewares=mws, loop=self._loop)
-        app.start = _start
-        self.router = app.router
-        self.server = app
+        self.server = WebAppBuilder(addr, port, middlewares=mws)
+        self.router = self.server.router
 
         if stat and Path(stat).is_dir():
             self.router.add_static(stat, stat)
