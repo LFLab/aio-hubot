@@ -548,3 +548,30 @@ class Blueprint:
         kws = dict(middleware=middleware)
         self.holds.setdefault("middleware_receive", list()).append(kws)
         return middleware
+
+
+class _WebAppBuilder:
+    def __init__(self, address, port, *, middlewares=(), **kws):
+        self.addr, self.port = address, port
+        self.middlewares = list(middlewares)
+        self.init_kws = kws
+        self.router = web.UrlDispatcher()
+        self.app = self.runner = None
+
+    async def build(self):
+        self.app = web.Application(middlewares=self.middlewares, **self.init_kws)
+        return self.app
+
+    async def start(self):
+        if self.app is None:
+            await self.build()
+
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, self.addr, self.port)
+        await site.start()
+
+    async def cleanup(self):
+        if self.runner:
+            await self.runner.cleanup()
+            self.app = self.runner = None
