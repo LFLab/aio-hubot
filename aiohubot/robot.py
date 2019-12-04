@@ -455,7 +455,7 @@ class Blueprint:
             for kws in handlers:
                 getattr(robot, delegatee)(**kws)
         if robot.server is not None:
-            robot.server.add_routes(self.router)
+            robot.router.add_routes(self.router)
         elif self.router:
             robot.logger.info("HTTP server is disabled."
                               f"{len(self.router)} routes will be dropped.")
@@ -555,14 +555,15 @@ class _WebAppBuilder:
         self.app = self.runner = None
 
     async def build(self):
-        self.app = web.Application(middlewares=self.middlewares, **self.init_kws)
+        self.app = web.Application(router=self.router,
+                                   middlewares=self.middlewares, **self.init_kws)
         return self.app
 
     async def start(self):
         if self.app is None:
             await self.build()
 
-        runner = web.AppRunner(app)
+        runner = web.AppRunner(self.app)
         await runner.setup()
         site = web.TCPSite(runner, self.addr, self.port)
         await site.start()
@@ -571,3 +572,5 @@ class _WebAppBuilder:
         if self.runner:
             await self.runner.cleanup()
             self.app = self.runner = None
+    
+    shutdown = cleanup
