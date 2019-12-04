@@ -341,7 +341,7 @@ class Robot:
             else:
                 mws.append(BasicAuthMiddleware(username=user, password=pwd))
 
-        self.server = WebAppBuilder(addr, port, middlewares=mws)
+        self.server = _WebAppBuilder(addr, port, middlewares=mws)
         self.router = self.server.router
 
         if stat and Path(stat).is_dir():
@@ -420,7 +420,7 @@ class Robot:
             @self.events.once("scripts-loaded")
             async def _start():
                 logger.debug("HTTP server Starting ...")
-                server.start()
+                await server.start()
                 logger.debug("HTTP Server Started .")
 
         coro = self.adapter.run()
