@@ -345,16 +345,8 @@ class Robot:
             else:
                 mws.append(BasicAuthMiddleware(username=user, password=pwd))
 
-        async def _start():
-            runner = web.AppRunner(app)
-            await runner.setup()
-            site = web.TCPSite(runner, addr, port)
-            await site.start()
-
-        app = web.Application(middlewares=mws, loop=self._loop)
-        app.start = _start
-        self.router = app.router
-        self.server = app
+        self.server = _WebAppBuilder(addr, port, middlewares=mws)
+        self.router = self.server.router
 
         if stat and Path(stat).is_dir():
             self.router.add_static(stat, stat)
@@ -427,9 +419,13 @@ class Robot:
         """ Kick off the event loop for the adapter. """
 
         if self.server is not None:
-            self.logger.debug("HTTP server Starting ...")
-            self._loop.run_until_complete(self.server.start())
-            self.logger.debug("HTTP Server Started .")
+            logger, server = self.logger, self.server
+
+            @self.events.once("scripts-loaded")
+            async def _start():
+                logger.debug("HTTP server Starting ...")
+                await server.start()
+                logger.debug("HTTP Server Started .")
 
         coro = self.adapter.run()
         if iscoroutine(coro):
@@ -463,7 +459,7 @@ class Blueprint:
             for kws in handlers:
                 getattr(robot, delegatee)(**kws)
         if robot.server is not None:
-            robot.server.add_routes(self.router)
+            robot.router.add_routes(self.router)
         elif self.router:
             robot.logger.info("HTTP server is disabled."
                               f"{len(self.router)} routes will be dropped.")
@@ -552,3 +548,33 @@ class Blueprint:
         kws = dict(middleware=middleware)
         self.holds.setdefault("middleware_receive", list()).append(kws)
         return middleware
+
+
+class _WebAppBuilder:
+    def __init__(self, address, port, *, middlewares=(), **kws):
+        self.addr, self.port = address, port
+        self.middlewares = list(middlewares)
+        self.init_kws = kws
+        self.router = web.UrlDispatcher()
+        self.app = self.runner = None
+
+    async def build(self):
+        self.app = web.Application(router=self.router,
+                                   middlewares=self.middlewares, **self.init_kws)
+        return self.app
+
+    async def start(self):
+        if self.app is None:
+            await self.build()
+
+        runner = web.AppRunner(self.app)
+        await runner.setup()
+        site = web.TCPSite(runner, self.addr, self.port)
+        await site.start()
+
+    async def cleanup(self):
+        if self.runner:
+            await self.runner.cleanup()
+            self.app = self.runner = None
+    
+    shutdown = cleanup
