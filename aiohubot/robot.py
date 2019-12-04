@@ -97,7 +97,7 @@ class Robot:
         """
         self.listeners.append(Listener(self, matcher, handler, **options))
 
-    def hear(self, regex, handler, **options):
+    def hear(self, regex, handler, *, flags=0, **options):
         """ Adds a Listener that attempts to match incoming messages based on a
         regular expression.
 
@@ -105,10 +105,13 @@ class Robot:
         :param handler: A (async) function is called with a Response object.
         :param options: additional parameters keyed on extension name.
         """
-        listener = TextListener(self, re.compile(regex), handler, **options)
+        regex = re.compile(regex)
+        pattern, oflags = regex.pattern, regex.flags
+        regexp = re.compile(pattern, oflags | flags)
+        listener = TextListener(self, regexp, handler, **options)
         self.listeners.append(listener)
 
-    def response(self, regex, handler, *, flags=0, **options):
+    def respond(self, regex, handler, *, flags=0, **options):
         """ Adds a Listener that attempts to match incoming messages directed
         at the robot based on a Regex.  All regexes treat patterns like they
         begin with a '^'
@@ -118,9 +121,9 @@ class Robot:
         :param flags: The constants passed to `re.compile`.
         :param options: additional parameters keyed on extension name.
         """
-        self.hear(self.response_pattern(regex, flags), handler, **options)
+        self.hear(self.respond_pattern(regex, flags), handler, **options)
 
-    def response_pattern(self, pattern, flags=0):
+    def respond_pattern(self, pattern, flags=0):
         """ Build a regular expression that matches messages addressed directly
         to the robot.
 
@@ -128,11 +131,12 @@ class Robot:
             robot's name/alias.
         :param flags: The constants passed to `re.compile`.
         """
-        pattern = re.compile(pattern).pattern
+        regex = re.compile(pattern)
+        pattern, oflags = regex.pattern, regex.flags
         escape = re.compile(r"[-[\]{}()*+?.,\\^$|#\s]")
         name = escape.sub("\\$&", self.name)
         if pattern.startswith("^"):
-            self.logger.warning("Anchors don't work well with response, "
+            self.logger.warning("Anchors don't work well with respond, "
                                 "perhaps you want to use `hear`?")
             self.logger.warning(f"the regex is {pattern}")
 
@@ -146,7 +150,7 @@ class Robot:
             _pattern = fr"^\s*[@]?(?:{x}[:,]?|{y}[:,]?)\s*(?:{pattern})"
         else:
             _pattern = fr"^\s*[@]?(?:{y}[:,]?|{x}[:,]?)\s*(?:{pattern})"
-        return re.compile(_pattern, flags)
+        return re.compile(_pattern, oflags | flags)
 
     def enter(self, handler, **options):
         """ Adds a Listener that triggers when anyone enters the room.
@@ -341,16 +345,8 @@ class Robot:
             else:
                 mws.append(BasicAuthMiddleware(username=user, password=pwd))
 
-        async def _start():
-            runner = web.AppRunner(app)
-            await runner.setup()
-            site = web.TCPSite(runner, addr, port)
-            await site.start()
-
-        app = web.Application(middlewares=mws, loop=self._loop)
-        app.start = _start
-        self.router = app.router
-        self.server = app
+        self.server = _WebAppBuilder(addr, port, middlewares=mws)
+        self.router = self.server.router
 
         if stat and Path(stat).is_dir():
             self.router.add_static(stat, stat)
@@ -423,9 +419,13 @@ class Robot:
         """ Kick off the event loop for the adapter. """
 
         if self.server is not None:
-            self.logger.debug("HTTP server Starting ...")
-            self._loop.run_until_complete(self.server.start())
-            self.logger.debug("HTTP Server Started .")
+            logger, server = self.logger, self.server
+
+            @self.events.once("scripts-loaded")
+            async def _start():
+                logger.debug("HTTP server Starting ...")
+                await server.start()
+                logger.debug("HTTP Server Started .")
 
         coro = self.adapter.run()
         if iscoroutine(coro):
@@ -459,7 +459,7 @@ class Blueprint:
             for kws in handlers:
                 getattr(robot, delegatee)(**kws)
         if robot.server is not None:
-            robot.server.add_routes(self.router)
+            robot.router.add_routes(self.router)
         elif self.router:
             robot.logger.info("HTTP server is disabled."
                               f"{len(self.router)} routes will be dropped.")
@@ -484,10 +484,10 @@ class Blueprint:
         kws.update(regex=regex)
         return decorator
 
-    def response(self, regex, flags=0, **options):
+    def respond(self, regex, *, flags=0, **options):
         def decorator(handler):
             kws.update(handler=handler)
-            self.holds.setdefault("response", list()).append(kws)
+            self.holds.setdefault("respond", list()).append(kws)
             return handler
 
         kws = options.copy()
@@ -548,3 +548,33 @@ class Blueprint:
         kws = dict(middleware=middleware)
         self.holds.setdefault("middleware_receive", list()).append(kws)
         return middleware
+
+
+class _WebAppBuilder:
+    def __init__(self, address, port, *, middlewares=(), **kws):
+        self.addr, self.port = address, port
+        self.middlewares = list(middlewares)
+        self.init_kws = kws
+        self.router = web.UrlDispatcher()
+        self.app = self.runner = None
+
+    async def build(self):
+        self.app = web.Application(router=self.router,
+                                   middlewares=self.middlewares, **self.init_kws)
+        return self.app
+
+    async def start(self):
+        if self.app is None:
+            await self.build()
+
+        runner = web.AppRunner(self.app)
+        await runner.setup()
+        site = web.TCPSite(runner, self.addr, self.port)
+        await site.start()
+
+    async def cleanup(self):
+        if self.runner:
+            await self.runner.cleanup()
+            self.app = self.runner = None
+    
+    shutdown = cleanup

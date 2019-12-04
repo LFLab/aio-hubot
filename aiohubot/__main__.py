@@ -25,6 +25,7 @@ def load_scripts(robot, scripts):
     load_external_scripts(robot)
     for path in scripts:
         robot.load(path.absolute())
+    robot.emit("scripts-loaded")
 
 
 def load_external_scripts(robot):
