@@ -453,8 +453,10 @@ class Blueprint:
     def __init__(self):
         self.holds = dict()
         self.router = web.RouteTableDef()
+        self.robot = None
 
     def __call__(self, robot):
+        self.robot = robot
         for delegatee, handlers in self.holds.items():
             for kws in handlers:
                 getattr(robot, delegatee)(**kws)
