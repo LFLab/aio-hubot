@@ -404,7 +404,18 @@ class Robot:
         return sorted(self.commands)
 
     def parse_help(self, document):
-        pass
+        docs, section = dict(), None
+        for raw_line in document.strip().splitlines():
+            line = raw_line.lower().strip(":")
+            if line in HUBOT_DOCUMENTATION_SECTIONS:
+                section = line
+                continue
+            else:
+                docs.setdefault(section, list()).append(raw_line)
+
+            if section == 'commands':
+                self.commands.append(line.strip())
+        return docs
 
     def message_room(self, room, *strings):
         """ A helper send function to message a room that the robot is in.
