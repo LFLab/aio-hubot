@@ -14,6 +14,9 @@ from .plugins import (EnterMessage, LeaveMessage, TopicMessage, CatchAllMessage,
                       TextListener)
 
 DEFAULT_ADAPTERS = ["shell"]
+HUBOT_DOCUMENTATION_SECTIONS = ('description', 'dependencies', 'configuration',
+                                'commands', 'notes', 'author', 'authors',
+                                'examples', 'tags', 'urls')
 
 
 def get_logger(level="INFO"):
