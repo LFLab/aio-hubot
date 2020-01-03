@@ -284,7 +284,7 @@ class Robot:
             if hasattr(module, "use"):
                 if callable(module.use):
                     module.use(self)
-                    self.parse_help(module.__doc__)
+                    self.parse_help(module.__doc__ or "")
                 else:
                     self.logger.warning(f"Expected `use` in {fpath} isn't callable.")
             else:
