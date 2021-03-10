@@ -76,10 +76,10 @@ def main(args):
         pass
     finally:
         loop = robot._loop
-        to_cancel = {t for t in asyncio.Task.all_tasks(loop) if not t.done()}
+        to_cancel = {t for t in asyncio.all_tasks(loop) if not t.done()}
         for task in to_cancel:
             task.cancel()
-        coro = asyncio.gather(*to_cancel, loop=loop, return_exceptions=True)
+        coro = asyncio.gather(*to_cancel, return_exceptions=True)
         loop.run_until_complete(coro)
         for task in to_cancel:
             if task.exception() is not None:

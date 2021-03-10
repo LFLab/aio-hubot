@@ -280,6 +280,7 @@ class Robot:
         try:
             spec = import_util.spec_from_file_location(fpath.stem, fpath)
             module = import_util.module_from_spec(spec)
+
             spec.loader.exec_module(module)
             if hasattr(module, "use"):
                 if callable(module.use):
@@ -455,12 +456,14 @@ class Robot:
     def shutdown(self):
         """ Gracefully shutdown the robot process. """
         self._loop.stop()
-        if self.server:
-            self._loop.run_until_complete(self.server.shutdown())
-        if self.ping_interval_id:
-            self.ping_interval_id.cancel()
-        self.adapter.close()
-        self.brain.close()
+        def _shutdown(fut):
+            if self.server:
+                self._loop.run_until_complete(self.server.shutdown())
+            if self.ping_interval_id:
+                self.ping_interval_id.cancel()
+            self.adapter.close()
+            self.brain.close()
+        self._loop.create_future().add_done_callback(_shutdown)
 
 
 class Blueprint:
