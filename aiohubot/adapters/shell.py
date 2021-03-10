@@ -45,6 +45,7 @@ class Cli(Cmd):
     evt = Event()
 
     def do_msg(self, msg):
+        """Send the `message` as a `TextMessage`."""
         user_id = environ.get("HUBOT_SHELL_USER_ID", "1")
         username = environ.get("HUBOT_SHELL_USER_NAME", "Shell")
         user = self.robot.brain.user_for_id(user_id,
@@ -57,15 +58,12 @@ class Cli(Cmd):
         self.lastcmd = ""
 
     def do_quit(self, msg):
+        """Leave the shell."""
         print("\n*** Exiting ... ***\n")
         return True
 
-    def do_EOF(self, msg):
-        print()
-        return self.do_quit(msg)
-
     def postloop(self):
-        self._loop.call_later(0, self.shell.shutdown)
+        self._loop.call_soon_threadsafe(self.shell.shutdown)
 
     do_exit = do_quit
 
