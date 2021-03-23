@@ -38,7 +38,6 @@ class Shell(Adapter):
 
     def shutdown(self):
         self.robot.shutdown()
-        return sys.exit(0)
 
 
 class Cli(Cmd):
@@ -63,7 +62,10 @@ class Cli(Cmd):
         return True
 
     def postloop(self):
-        self._loop.call_soon_threadsafe(self.shell.shutdown)
+        coro = self.robot.server.shutdown()
+        self.robot.server = None
+        f = run_coroutine_threadsafe(coro, loop=self._loop)
+        f.add_done_callback(lambda f: self.shell.shutdown())
 
     do_exit = do_quit
 
