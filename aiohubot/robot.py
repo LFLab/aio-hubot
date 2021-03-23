@@ -442,9 +442,14 @@ class Robot:
                 await server.start()
                 logger.debug("HTTP Server Started .")
 
-        coro = self.adapter.run()
-        if iscoroutine(coro):
-            self._loop.create_task(coro)
+        try:
+            coro = self.adapter.run()
+            if iscoroutine(coro):
+                self._loop.run_until_complete(coro)
+        except Exception as e:
+            self.logger.exception("Failed to start adapter --")
+            sys.exit(1)
+
         try:
             self.emit("running")
             self._loop.run_forever()
@@ -455,15 +460,14 @@ class Robot:
 
     def shutdown(self):
         """ Gracefully shutdown the robot process. """
+        if self.server:
+            self._loop.create_task(self.server.shutdown())
+            self.server = None
+        if self.ping_interval_id:
+            self.ping_interval_id.cancel()
+        self.adapter.close()
+        self.brain.close()
         self._loop.stop()
-        def _shutdown(fut):
-            if self.server:
-                self._loop.run_until_complete(self.server.shutdown())
-            if self.ping_interval_id:
-                self.ping_interval_id.cancel()
-            self.adapter.close()
-            self.brain.close()
-        self._loop.create_future().add_done_callback(_shutdown)
 
 
 class Blueprint:
