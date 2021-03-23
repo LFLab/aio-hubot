@@ -17,9 +17,15 @@ DEFAULT_ADAPTERS = ["shell"]
 HUBOT_DOCUMENTATION_SECTIONS = ('description', 'dependencies', 'configuration',
                                 'commands', 'notes', 'author', 'authors',
                                 'examples', 'tags', 'urls')
+log = None
 
 
 def get_logger(level="INFO"):
+    global log
+
+    if log:
+        return log
+
     fmt = Formatter("[%(asctime)s] [%(module)s.%(funcName)s] [%(levelname)s]::"
                     " %(message)s",
                     datefmt="%Y-%m-%d %H:%M:%S %z")
@@ -596,6 +602,7 @@ class _WebAppBuilder:
         await site.start()
 
     async def cleanup(self):
+        log.debug("webserver shutting down...")
         if self.runner:
             await self.runner.cleanup()
             self.app = self.runner = None
